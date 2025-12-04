@@ -147,31 +147,43 @@ export async function POST(request: NextRequest) {
           raw_data: prop.raw_data,
         }));
 
-        // Batch upsert (much faster and handles conflicts)
-        const { data: upsertedData, error: upsertError } = await supabase
-          .from('attom_properties')
-          .upsert(propertyDataBatch, {
-            onConflict: 'attom_id',
-            ignoreDuplicates: false
-          })
-          .select('id');
+        // Insert in smaller batches to avoid size limits (25 at a time)
+        const BATCH_SIZE = 25;
+        for (let i = 0; i < propertyDataBatch.length; i += BATCH_SIZE) {
+          const batch = propertyDataBatch.slice(i, i + BATCH_SIZE);
 
-        if (upsertError) {
-          console.error(`[ATTOM] Upsert error for ZIP ${zipCode}:`, upsertError);
-          // Try inserting one by one to see which fail
-          for (const propData of propertyDataBatch) {
-            const { error: singleError } = await supabase
-              .from('attom_properties')
-              .upsert(propData, { onConflict: 'attom_id' });
+          // Remove raw_data if it's causing issues (can be large)
+          const cleanBatch = batch.map(prop => ({
+            ...prop,
+            raw_data: null // Skip storing raw data to avoid size issues
+          }));
 
-            if (singleError) {
-              console.error(`[ATTOM] Single insert failed for attom_id ${propData.attom_id}:`, singleError.message);
-            } else {
-              totalInserted++;
+          const { data: upsertedData, error: upsertError } = await supabase
+            .from('attom_properties')
+            .upsert(cleanBatch, {
+              onConflict: 'attom_id',
+              ignoreDuplicates: false
+            })
+            .select('id');
+
+          if (upsertError) {
+            console.error(`[ATTOM] Batch upsert error for ZIP ${zipCode}:`, upsertError.message);
+            // Try one by one for this batch
+            for (const propData of cleanBatch) {
+              const { error: singleError } = await supabase
+                .from('attom_properties')
+                .upsert(propData, { onConflict: 'attom_id' });
+
+              if (singleError) {
+                console.error(`[ATTOM] Insert failed for ${propData.street_address}:`, singleError.message);
+              } else {
+                totalInserted++;
+              }
             }
+          } else {
+            totalInserted += upsertedData?.length || cleanBatch.length;
+            console.log(`[ATTOM] ZIP ${zipCode}: Batch ${Math.floor(i/BATCH_SIZE) + 1} - inserted ${upsertedData?.length || cleanBatch.length} properties`);
           }
-        } else {
-          totalInserted += upsertedData?.length || propertyDataBatch.length;
         }
 
         console.log(`[ATTOM] ZIP ${zipCode}: ${properties.length} properties processed`);
