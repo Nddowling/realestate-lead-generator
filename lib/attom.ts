@@ -217,9 +217,19 @@ class AttomClient {
     // Owner mailing address
     const ownerMail = owner.mailingAddress || owner.mailingaddress || {};
 
-    // Extract attom_id from multiple possible locations
+    // Extract attom_id from multiple possible locations (ATTOM uses different field names)
     const attom_id = identifier.attomId || identifier.Id || identifier.id ||
-                     raw.attomId || raw.Id || raw.id || null;
+                     identifier.obPropId || identifier.ATTOM_ID ||
+                     raw.attomId || raw.Id || raw.id || raw.obPropId ||
+                     // Try to generate a unique ID from address if no ID found
+                     null;
+
+    // Log first property to debug structure
+    if (!attom_id) {
+      console.log('[ATTOM] No attom_id found. Identifier keys:', Object.keys(identifier));
+      console.log('[ATTOM] Raw keys:', Object.keys(raw));
+      console.log('[ATTOM] Full identifier:', JSON.stringify(identifier));
+    }
 
     return {
       attom_id,

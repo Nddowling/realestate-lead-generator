@@ -76,13 +76,36 @@ export async function POST(request: NextRequest) {
         apiCallsUsed++;
         totalFetched += properties.length;
 
-        // Filter out properties without attom_id (required for upsert)
-        const validProperties = properties.filter(prop => prop.attom_id != null);
+        // Generate fallback IDs for properties without attom_id
+        const propertiesWithIds = properties.map((prop, index) => {
+          if (prop.attom_id != null) return prop;
+
+          // Generate a numeric ID from address hash if no attom_id
+          const addressStr = `${prop.street_address}-${prop.city}-${prop.zip_code}`.toLowerCase();
+          let hash = 0;
+          for (let i = 0; i < addressStr.length; i++) {
+            const char = addressStr.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+          }
+          // Make it positive and add timestamp component for uniqueness
+          const generatedId = Math.abs(hash) * 1000 + index;
+
+          console.log(`[ATTOM] Generated fallback ID ${generatedId} for ${prop.street_address}`);
+          return { ...prop, attom_id: generatedId };
+        });
+
+        // Filter out properties without any address (truly invalid)
+        const validProperties = propertiesWithIds.filter(prop =>
+          prop.attom_id != null && prop.street_address
+        );
 
         if (validProperties.length === 0) {
-          console.log(`[ATTOM] ZIP ${zipCode}: No valid properties with attom_id`);
+          console.log(`[ATTOM] ZIP ${zipCode}: No valid properties with address`);
           continue;
         }
+
+        console.log(`[ATTOM] ZIP ${zipCode}: ${validProperties.length} valid properties (${properties.length - validProperties.length} filtered out)`);
 
         // Prepare batch data
         const propertyDataBatch = validProperties.map(prop => ({

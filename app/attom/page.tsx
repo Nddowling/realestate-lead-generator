@@ -170,7 +170,7 @@ export default function AttomPage() {
       if (data.success) {
         setMessage({
           type: 'success',
-          text: `Imported ${data.stats.recordsFetched} properties (${data.stats.apiCallsUsed} API calls used)`,
+          text: `Fetched ${data.stats.recordsFetched} properties, saved ${data.stats.recordsInserted} to database (${data.stats.apiCallsUsed} API calls used)`,
         });
         fetchStats();
         fetchProperties();
