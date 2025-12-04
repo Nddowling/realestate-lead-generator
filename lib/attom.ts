@@ -217,8 +217,12 @@ class AttomClient {
     // Owner mailing address
     const ownerMail = owner.mailingAddress || owner.mailingaddress || {};
 
+    // Extract attom_id from multiple possible locations
+    const attom_id = identifier.attomId || identifier.Id || identifier.id ||
+                     raw.attomId || raw.Id || raw.id || null;
+
     return {
-      attom_id: identifier.attomId || identifier.Id,
+      attom_id,
       street_address: address.oneLine || address.line1 || '',
       city: address.locality || '',
       state: address.countrySubd || 'GA',
@@ -259,8 +263,11 @@ class AttomClient {
     const assessed = assessment.assessed || {};
     const market = assessment.market || {};
 
+    const attom_id = identifier.attomId || identifier.Id || identifier.id ||
+                     raw.attomId || raw.Id || raw.id || null;
+
     return {
-      attom_id: identifier.attomId || identifier.Id,
+      attom_id,
       street_address: address.oneLine || address.line1 || '',
       city: address.locality || '',
       state: address.countrySubd || 'GA',
@@ -279,8 +286,11 @@ class AttomClient {
     const address = raw.address || {};
     const avm = raw.avm || {};
 
+    const attom_id = identifier.attomId || identifier.Id || identifier.id ||
+                     raw.attomId || raw.Id || raw.id || null;
+
     return {
-      attom_id: identifier.attomId || identifier.Id,
+      attom_id,
       street_address: address.oneLine || address.line1 || '',
       city: address.locality || '',
       state: address.countrySubd || 'GA',

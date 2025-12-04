@@ -76,63 +76,79 @@ export async function POST(request: NextRequest) {
         apiCallsUsed++;
         totalFetched += properties.length;
 
-        // Upsert properties into database
-        for (const prop of properties) {
-          const { data: existing } = await supabase
-            .from('attom_properties')
-            .select('id')
-            .eq('attom_id', prop.attom_id)
-            .single();
+        // Filter out properties without attom_id (required for upsert)
+        const validProperties = properties.filter(prop => prop.attom_id != null);
 
-          const propertyData = {
-            attom_id: prop.attom_id,
-            street_address: prop.street_address,
-            city: prop.city,
-            state: prop.state,
-            zip_code: prop.zip_code,
-            county: prop.county,
-            fips_code: prop.fips_code,
-            apn: prop.apn,
-            property_type: prop.property_type,
-            year_built: prop.year_built,
-            bedrooms: prop.bedrooms,
-            bathrooms_total: prop.bathrooms_total,
-            living_sqft: prop.living_sqft,
-            lot_sqft: prop.lot_sqft,
-            stories: prop.stories,
-            pool: prop.pool,
-            garage_sqft: prop.garage_sqft,
-            latitude: prop.latitude,
-            longitude: prop.longitude,
-            owner_name: prop.owner_name,
-            owner_name_2: prop.owner_name_2,
-            owner_mailing_address: prop.owner_mailing_address,
-            owner_mailing_city: prop.owner_mailing_city,
-            owner_mailing_state: prop.owner_mailing_state,
-            owner_mailing_zip: prop.owner_mailing_zip,
-            owner_occupied: prop.owner_occupied,
-            avm_value: prop.avm_value,
-            avm_high: prop.avm_high,
-            avm_low: prop.avm_low,
-            avm_confidence_score: prop.avm_confidence_score,
-            assessed_value: prop.assessed_value,
-            market_value: prop.market_value,
-            tax_amount: prop.tax_amount,
-            last_sale_date: prop.last_sale_date,
-            last_sale_price: prop.last_sale_price,
-            raw_data: prop.raw_data,
-          };
+        if (validProperties.length === 0) {
+          console.log(`[ATTOM] ZIP ${zipCode}: No valid properties with attom_id`);
+          continue;
+        }
 
-          if (existing) {
-            await supabase
+        // Prepare batch data
+        const propertyDataBatch = validProperties.map(prop => ({
+          attom_id: prop.attom_id,
+          street_address: prop.street_address,
+          city: prop.city,
+          state: prop.state,
+          zip_code: prop.zip_code,
+          county: prop.county,
+          fips_code: prop.fips_code,
+          apn: prop.apn,
+          property_type: prop.property_type,
+          year_built: prop.year_built,
+          bedrooms: prop.bedrooms,
+          bathrooms_total: prop.bathrooms_total,
+          living_sqft: prop.living_sqft,
+          lot_sqft: prop.lot_sqft,
+          stories: prop.stories,
+          pool: prop.pool,
+          garage_sqft: prop.garage_sqft,
+          latitude: prop.latitude,
+          longitude: prop.longitude,
+          owner_name: prop.owner_name,
+          owner_name_2: prop.owner_name_2,
+          owner_mailing_address: prop.owner_mailing_address,
+          owner_mailing_city: prop.owner_mailing_city,
+          owner_mailing_state: prop.owner_mailing_state,
+          owner_mailing_zip: prop.owner_mailing_zip,
+          owner_occupied: prop.owner_occupied,
+          avm_value: prop.avm_value,
+          avm_high: prop.avm_high,
+          avm_low: prop.avm_low,
+          avm_confidence_score: prop.avm_confidence_score,
+          assessed_value: prop.assessed_value,
+          market_value: prop.market_value,
+          tax_amount: prop.tax_amount,
+          last_sale_date: prop.last_sale_date,
+          last_sale_price: prop.last_sale_price,
+          raw_data: prop.raw_data,
+        }));
+
+        // Batch upsert (much faster and handles conflicts)
+        const { data: upsertedData, error: upsertError } = await supabase
+          .from('attom_properties')
+          .upsert(propertyDataBatch, {
+            onConflict: 'attom_id',
+            ignoreDuplicates: false
+          })
+          .select('id');
+
+        if (upsertError) {
+          console.error(`[ATTOM] Upsert error for ZIP ${zipCode}:`, upsertError);
+          // Try inserting one by one to see which fail
+          for (const propData of propertyDataBatch) {
+            const { error: singleError } = await supabase
               .from('attom_properties')
-              .update(propertyData)
-              .eq('id', existing.id);
-            totalUpdated++;
-          } else {
-            await supabase.from('attom_properties').insert(propertyData);
-            totalInserted++;
+              .upsert(propData, { onConflict: 'attom_id' });
+
+            if (singleError) {
+              console.error(`[ATTOM] Single insert failed for attom_id ${propData.attom_id}:`, singleError.message);
+            } else {
+              totalInserted++;
+            }
           }
+        } else {
+          totalInserted += upsertedData?.length || propertyDataBatch.length;
         }
 
         console.log(`[ATTOM] ZIP ${zipCode}: ${properties.length} properties processed`);
