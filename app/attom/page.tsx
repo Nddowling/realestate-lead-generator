@@ -168,9 +168,24 @@ export default function AttomPage() {
       const data = await res.json();
 
       if (data.success) {
+        // Download raw backup file to user's computer
+        if (data.rawBackups && data.rawBackups.length > 0) {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+          const filename = `ATTOM_backup_${timestamp}.json`;
+          const blob = new Blob([JSON.stringify(data.rawBackups, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+
         setMessage({
           type: 'success',
-          text: `Fetched ${data.stats.recordsFetched} properties, saved ${data.stats.recordsInserted} to database (${data.stats.apiCallsUsed} API calls used)`,
+          text: `Fetched ${data.stats.recordsFetched} properties, saved ${data.stats.recordsInserted} to database (${data.stats.apiCallsUsed} API calls used). Backup downloaded!`,
         });
         fetchStats();
         fetchProperties();

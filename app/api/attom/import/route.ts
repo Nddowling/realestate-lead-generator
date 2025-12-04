@@ -80,6 +80,9 @@ export async function POST(request: NextRequest) {
     let totalUpdated = 0;
     let apiCallsUsed = 0;
 
+    // Collect all raw responses for browser download backup
+    const rawBackups: { zipCode: string; endpoint: string; timestamp: string; data: AttomApiResponse }[] = [];
+
     // Process each ZIP code
     for (const zipCode of targetZips) {
       try {
@@ -111,9 +114,16 @@ export async function POST(request: NextRequest) {
             throw new Error(`Unknown endpoint: ${endpoint}`);
         }
 
-        // SAVE RAW BACKUP FIRST - before any processing
+        // SAVE RAW BACKUP - server-side (works locally) + collect for browser download
         if (rawResponse) {
           saveRawResponse(endpoint, zipCode, rawResponse);
+          // Also collect for browser download (works on Vercel)
+          rawBackups.push({
+            zipCode,
+            endpoint,
+            timestamp: new Date().toISOString(),
+            data: rawResponse,
+          });
         }
 
         apiCallsUsed++;
@@ -260,6 +270,8 @@ export async function POST(request: NextRequest) {
         recordsUpdated: totalUpdated,
         apiCallsUsed,
       },
+      // Include raw data for browser download backup
+      rawBackups,
     });
   } catch (error) {
     console.error('[ATTOM] Import error:', error);
