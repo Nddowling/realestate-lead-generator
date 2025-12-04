@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0f172a;
+  --foreground: #f8fafc;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* Card styles */
+@layer components {
+  .card {
+    @apply bg-dark-100 border border-slate-700 rounded-xl p-6;
+  }
+
+  .card-hover {
+    @apply card hover:border-slate-600 transition-colors cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-400 text-white font-semibold px-4 py-2 rounded-lg transition-colors;
+  }
+
+  .btn-secondary {
+    @apply bg-slate-700 hover:bg-slate-600 text-white font-medium px-4 py-2 rounded-lg transition-colors;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 hover:bg-red-500 text-white font-medium px-4 py-2 rounded-lg transition-colors;
+  }
+
+  .input-field {
+    @apply w-full bg-dark-200 border border-slate-700 rounded-lg px-4 py-2 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
+  .badge-hot {
+    @apply bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-warm {
+    @apply bg-orange-500/20 text-orange-400 border border-orange-500/30 px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-cold {
+    @apply bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-1 rounded-full text-xs font-medium;
+  }
+}
