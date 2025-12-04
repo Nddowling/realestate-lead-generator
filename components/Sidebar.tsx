@@ -10,6 +10,7 @@ const navItems = [
   { href: '/buyers', label: 'Buyers', icon: '🤝' },
   { href: '/analyzer', label: 'Deal Analyzer', icon: '🔢' },
   { href: '/sources', label: 'Data Sources', icon: '📥' },
+  { href: '/attom', label: 'ATTOM Data', icon: '🏠' },
   { href: '/analytics', label: 'Analytics', icon: '📉' },
 ];
 
