@@ -81,6 +81,8 @@ export default function AttomPage() {
     endpoint: 'detailowner',
     county: 'chatham',
     propertyType: 'sfr',
+    selectionMode: 'county' as 'county' | 'zip',
+    selectedZips: [] as string[],
   });
 
   const fetchStats = useCallback(async () => {
@@ -141,6 +143,12 @@ export default function AttomPage() {
       return;
     }
 
+    // Validate ZIP selection if in zip mode
+    if (importSettings.selectionMode === 'zip' && importSettings.selectedZips.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one ZIP code' });
+      return;
+    }
+
     setImporting(true);
     setMessage(null);
 
@@ -150,7 +158,8 @@ export default function AttomPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           endpoint: importSettings.endpoint,
-          county: importSettings.county,
+          county: importSettings.selectionMode === 'county' ? importSettings.county : undefined,
+          zipCodes: importSettings.selectionMode === 'zip' ? importSettings.selectedZips : [],
           propertyType: importSettings.propertyType,
           pageSize: 100,
         }),
@@ -296,7 +305,7 @@ export default function AttomPage() {
         <div className="card">
           <h2 className="text-lg font-semibold text-white mb-4">Import from ATTOM API</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm text-slate-400 mb-1">Data Type</label>
               <select
@@ -307,19 +316,6 @@ export default function AttomPage() {
                 <option value="detailowner">Property + Owner Info</option>
                 <option value="assessment">Tax Assessments</option>
                 <option value="avm">Valuations (AVM)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm text-slate-400 mb-1">County</label>
-              <select
-                value={importSettings.county}
-                onChange={(e) => setImportSettings({ ...importSettings, county: e.target.value })}
-                className="input w-full"
-              >
-                <option value="chatham">Chatham (Savannah) - {CHATHAM_COUNTY_ZIPS.length} ZIPs</option>
-                <option value="effingham">Effingham (Rincon) - {EFFINGHAM_COUNTY_ZIPS.length} ZIPs</option>
-                <option value="all">All Target Areas</option>
               </select>
             </div>
 
@@ -338,6 +334,191 @@ export default function AttomPage() {
             </div>
           </div>
 
+          {/* Selection Mode Toggle */}
+          <div className="mb-4">
+            <label className="block text-sm text-slate-400 mb-2">Select By</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setImportSettings({ ...importSettings, selectionMode: 'county', selectedZips: [] })}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  importSettings.selectionMode === 'county'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-dark-200 text-slate-400 hover:text-white'
+                }`}
+              >
+                County
+              </button>
+              <button
+                onClick={() => setImportSettings({ ...importSettings, selectionMode: 'zip' })}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  importSettings.selectionMode === 'zip'
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-dark-200 text-slate-400 hover:text-white'
+                }`}
+              >
+                ZIP Codes
+              </button>
+            </div>
+          </div>
+
+          {/* County Selection */}
+          {importSettings.selectionMode === 'county' && (
+            <div className="mb-6">
+              <label className="block text-sm text-slate-400 mb-1">County</label>
+              <select
+                value={importSettings.county}
+                onChange={(e) => setImportSettings({ ...importSettings, county: e.target.value })}
+                className="input w-full"
+              >
+                <option value="chatham">Chatham (Savannah) - {CHATHAM_COUNTY_ZIPS.length} ZIPs</option>
+                <option value="effingham">Effingham (Rincon) - {EFFINGHAM_COUNTY_ZIPS.length} ZIPs</option>
+                <option value="all">All Target Areas</option>
+              </select>
+            </div>
+          )}
+
+          {/* ZIP Code Selection */}
+          {importSettings.selectionMode === 'zip' && (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm text-slate-400">Select ZIP Codes</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setImportSettings({
+                      ...importSettings,
+                      selectedZips: [...CHATHAM_COUNTY_ZIPS, ...EFFINGHAM_COUNTY_ZIPS]
+                    })}
+                    className="text-xs text-primary-400 hover:text-primary-300"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={() => setImportSettings({ ...importSettings, selectedZips: [] })}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              {/* Chatham County ZIPs */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-white">Chatham County (Savannah)</p>
+                  <button
+                    onClick={() => {
+                      const allChatham = CHATHAM_COUNTY_ZIPS.every(z => importSettings.selectedZips.includes(z));
+                      if (allChatham) {
+                        setImportSettings({
+                          ...importSettings,
+                          selectedZips: importSettings.selectedZips.filter(z => !CHATHAM_COUNTY_ZIPS.includes(z))
+                        });
+                      } else {
+                        setImportSettings({
+                          ...importSettings,
+                          selectedZips: Array.from(new Set([...importSettings.selectedZips, ...CHATHAM_COUNTY_ZIPS]))
+                        });
+                      }
+                    }}
+                    className="text-xs text-primary-400 hover:text-primary-300"
+                  >
+                    {CHATHAM_COUNTY_ZIPS.every(z => importSettings.selectedZips.includes(z)) ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CHATHAM_COUNTY_ZIPS.map(zip => (
+                    <label
+                      key={zip}
+                      className={`px-3 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
+                        importSettings.selectedZips.includes(zip)
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-dark-200 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={importSettings.selectedZips.includes(zip)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setImportSettings({
+                              ...importSettings,
+                              selectedZips: [...importSettings.selectedZips, zip]
+                            });
+                          } else {
+                            setImportSettings({
+                              ...importSettings,
+                              selectedZips: importSettings.selectedZips.filter(z => z !== zip)
+                            });
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      {zip}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Effingham County ZIPs */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-white">Effingham County (Rincon)</p>
+                  <button
+                    onClick={() => {
+                      const allEffingham = EFFINGHAM_COUNTY_ZIPS.every(z => importSettings.selectedZips.includes(z));
+                      if (allEffingham) {
+                        setImportSettings({
+                          ...importSettings,
+                          selectedZips: importSettings.selectedZips.filter(z => !EFFINGHAM_COUNTY_ZIPS.includes(z))
+                        });
+                      } else {
+                        setImportSettings({
+                          ...importSettings,
+                          selectedZips: Array.from(new Set([...importSettings.selectedZips, ...EFFINGHAM_COUNTY_ZIPS]))
+                        });
+                      }
+                    }}
+                    className="text-xs text-primary-400 hover:text-primary-300"
+                  >
+                    {EFFINGHAM_COUNTY_ZIPS.every(z => importSettings.selectedZips.includes(z)) ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {EFFINGHAM_COUNTY_ZIPS.map(zip => (
+                    <label
+                      key={zip}
+                      className={`px-3 py-1.5 rounded-lg cursor-pointer transition-colors text-sm ${
+                        importSettings.selectedZips.includes(zip)
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-dark-200 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={importSettings.selectedZips.includes(zip)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setImportSettings({
+                              ...importSettings,
+                              selectedZips: [...importSettings.selectedZips, zip]
+                            });
+                          } else {
+                            setImportSettings({
+                              ...importSettings,
+                              selectedZips: importSettings.selectedZips.filter(z => z !== zip)
+                            });
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      {zip}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="bg-dark-200/50 rounded-lg p-4 mb-6">
             <h3 className="text-white font-medium mb-2">Import Preview</h3>
             <ul className="text-sm text-slate-400 space-y-1">
@@ -345,9 +526,16 @@ export default function AttomPage() {
                 This will fetch <strong className="text-white">up to 100 properties</strong> per ZIP code
               </li>
               <li>
-                {importSettings.county === 'chatham' && `${CHATHAM_COUNTY_ZIPS.length} ZIP codes = ${CHATHAM_COUNTY_ZIPS.length} API calls`}
-                {importSettings.county === 'effingham' && `${EFFINGHAM_COUNTY_ZIPS.length} ZIP codes = ${EFFINGHAM_COUNTY_ZIPS.length} API calls`}
-                {importSettings.county === 'all' && `${CHATHAM_COUNTY_ZIPS.length + EFFINGHAM_COUNTY_ZIPS.length} ZIP codes = ${CHATHAM_COUNTY_ZIPS.length + EFFINGHAM_COUNTY_ZIPS.length} API calls`}
+                {importSettings.selectionMode === 'county' && (
+                  <>
+                    {importSettings.county === 'chatham' && `${CHATHAM_COUNTY_ZIPS.length} ZIP codes = ${CHATHAM_COUNTY_ZIPS.length} API calls`}
+                    {importSettings.county === 'effingham' && `${EFFINGHAM_COUNTY_ZIPS.length} ZIP codes = ${EFFINGHAM_COUNTY_ZIPS.length} API calls`}
+                    {importSettings.county === 'all' && `${CHATHAM_COUNTY_ZIPS.length + EFFINGHAM_COUNTY_ZIPS.length} ZIP codes = ${CHATHAM_COUNTY_ZIPS.length + EFFINGHAM_COUNTY_ZIPS.length} API calls`}
+                  </>
+                )}
+                {importSettings.selectionMode === 'zip' && (
+                  <>{importSettings.selectedZips.length} ZIP codes = {importSettings.selectedZips.length} API calls</>
+                )}
               </li>
               <li>
                 Remaining budget: <strong className={stats?.apiCallsRemaining && stats.apiCallsRemaining > 0 ? 'text-green-400' : 'text-red-400'}>
