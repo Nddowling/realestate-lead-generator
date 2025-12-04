@@ -122,6 +122,19 @@ class AttomClient {
       pageSize?: number;
     } = {}
   ): Promise<AttomProperty[]> {
+    const result = await this.getPropertiesWithOwnerRaw(postalCode, options);
+    return result.properties;
+  }
+
+  // Get properties with owner details - returns raw response too for backup
+  async getPropertiesWithOwnerRaw(
+    postalCode: string,
+    options: {
+      propertyType?: string;
+      page?: number;
+      pageSize?: number;
+    } = {}
+  ): Promise<{ properties: AttomProperty[]; rawResponse: AttomApiResponse }> {
     const params: Record<string, string> = {
       postalcode: postalCode,
       pageSize: String(options.pageSize || 100),
@@ -135,10 +148,13 @@ class AttomClient {
     const response = await this.fetch('/property/detailowner', params);
 
     if (!response.property || response.property.length === 0) {
-      return [];
+      return { properties: [], rawResponse: response };
     }
 
-    return response.property.map((p: any) => this.transformProperty(p));
+    return {
+      properties: response.property.map((p: any) => this.transformProperty(p)),
+      rawResponse: response,
+    };
   }
 
   // Get property assessment/tax data
@@ -146,6 +162,15 @@ class AttomClient {
     postalCode: string,
     options: { page?: number; pageSize?: number } = {}
   ): Promise<AttomProperty[]> {
+    const result = await this.getAssessmentsRaw(postalCode, options);
+    return result.properties;
+  }
+
+  // Get assessments - returns raw response too for backup
+  async getAssessmentsRaw(
+    postalCode: string,
+    options: { page?: number; pageSize?: number } = {}
+  ): Promise<{ properties: AttomProperty[]; rawResponse: AttomApiResponse }> {
     const params: Record<string, string> = {
       postalcode: postalCode,
       pageSize: String(options.pageSize || 100),
@@ -155,10 +180,13 @@ class AttomClient {
     const response = await this.fetch('/assessment/detail', params);
 
     if (!response.property || response.property.length === 0) {
-      return [];
+      return { properties: [], rawResponse: response };
     }
 
-    return response.property.map((p: any) => this.transformAssessment(p));
+    return {
+      properties: response.property.map((p: any) => this.transformAssessment(p)),
+      rawResponse: response,
+    };
   }
 
   // Get AVM (Automated Valuation Model) data
@@ -166,6 +194,15 @@ class AttomClient {
     postalCode: string,
     options: { page?: number; pageSize?: number } = {}
   ): Promise<AttomProperty[]> {
+    const result = await this.getAVMRaw(postalCode, options);
+    return result.properties;
+  }
+
+  // Get AVM - returns raw response too for backup
+  async getAVMRaw(
+    postalCode: string,
+    options: { page?: number; pageSize?: number } = {}
+  ): Promise<{ properties: AttomProperty[]; rawResponse: AttomApiResponse }> {
     const params: Record<string, string> = {
       postalcode: postalCode,
       pageSize: String(options.pageSize || 100),
@@ -175,10 +212,13 @@ class AttomClient {
     const response = await this.fetch('/attomavm/detail', params);
 
     if (!response.property || response.property.length === 0) {
-      return [];
+      return { properties: [], rawResponse: response };
     }
 
-    return response.property.map((p: any) => this.transformAVM(p));
+    return {
+      properties: response.property.map((p: any) => this.transformAVM(p)),
+      rawResponse: response,
+    };
   }
 
   // Get sales history for properties

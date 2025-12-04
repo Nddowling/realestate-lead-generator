@@ -1,6 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { attomClient, AttomProperty, CHATHAM_COUNTY_ZIPS, EFFINGHAM_COUNTY_ZIPS } from '@/lib/attom';
+import { attomClient, AttomProperty, AttomApiResponse, CHATHAM_COUNTY_ZIPS, EFFINGHAM_COUNTY_ZIPS } from '@/lib/attom';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Save raw API response to local JSON file for backup
+function saveRawResponse(endpoint: string, zipCode: string, rawResponse: AttomApiResponse) {
+  try {
+    // Get the user's Downloads folder path
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '/tmp';
+    const backupDir = path.join(homeDir, 'Downloads', 'ATTOM_Backups');
+
+    // Create backup directory if it doesn't exist
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Create filename with timestamp
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    const filename = `${endpoint}_${zipCode}_${timestamp}.json`;
+    const filepath = path.join(backupDir, filename);
+
+    // Write the raw response
+    fs.writeFileSync(filepath, JSON.stringify(rawResponse, null, 2));
+    console.log(`[ATTOM] Saved raw backup: ${filepath}`);
+
+    return filepath;
+  } catch (error) {
+    console.error('[ATTOM] Failed to save backup:', error);
+    return null;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,24 +84,36 @@ export async function POST(request: NextRequest) {
     for (const zipCode of targetZips) {
       try {
         let properties: AttomProperty[] = [];
+        let rawResponse: AttomApiResponse | null = null;
 
-        // Fetch data based on endpoint type
+        // Fetch data based on endpoint type - use raw methods to get backup data
         switch (endpoint) {
           case 'detailowner':
-            properties = await attomClient.getPropertiesWithOwner(zipCode, {
+            const detailResult = await attomClient.getPropertiesWithOwnerRaw(zipCode, {
               propertyType,
               pageSize,
               page,
             });
+            properties = detailResult.properties;
+            rawResponse = detailResult.rawResponse;
             break;
           case 'assessment':
-            properties = await attomClient.getAssessments(zipCode, { pageSize, page });
+            const assessResult = await attomClient.getAssessmentsRaw(zipCode, { pageSize, page });
+            properties = assessResult.properties;
+            rawResponse = assessResult.rawResponse;
             break;
           case 'avm':
-            properties = await attomClient.getAVM(zipCode, { pageSize, page });
+            const avmResult = await attomClient.getAVMRaw(zipCode, { pageSize, page });
+            properties = avmResult.properties;
+            rawResponse = avmResult.rawResponse;
             break;
           default:
             throw new Error(`Unknown endpoint: ${endpoint}`);
+        }
+
+        // SAVE RAW BACKUP FIRST - before any processing
+        if (rawResponse) {
+          saveRawResponse(endpoint, zipCode, rawResponse);
         }
 
         apiCallsUsed++;
