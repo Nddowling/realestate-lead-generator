@@ -161,7 +161,7 @@ export default function AttomPage() {
           county: importSettings.selectionMode === 'county' ? importSettings.county : undefined,
           zipCodes: importSettings.selectionMode === 'zip' ? importSettings.selectedZips : [],
           propertyType: importSettings.propertyType,
-          pageSize: 100,
+          pageSize: 1000, // Max ATTOM allows - get as much as possible per call
         }),
       });
 
@@ -523,7 +523,7 @@ export default function AttomPage() {
             <h3 className="text-white font-medium mb-2">Import Preview</h3>
             <ul className="text-sm text-slate-400 space-y-1">
               <li>
-                This will fetch <strong className="text-white">up to 100 properties</strong> per ZIP code
+                This will fetch <strong className="text-white">up to 1,000 properties</strong> per ZIP code
               </li>
               <li>
                 {importSettings.selectionMode === 'county' && (

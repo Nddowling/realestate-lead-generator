@@ -147,8 +147,8 @@ export async function POST(request: NextRequest) {
           raw_data: prop.raw_data,
         }));
 
-        // Insert in smaller batches to avoid size limits (25 at a time)
-        const BATCH_SIZE = 25;
+        // Insert in batches (500 at a time - Supabase handles this well without raw_data)
+        const BATCH_SIZE = 500;
         for (let i = 0; i < propertyDataBatch.length; i += BATCH_SIZE) {
           const batch = propertyDataBatch.slice(i, i + BATCH_SIZE);
 
